@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1" />
+<title>中国真实三维地形 · 高程10倍 · 斜俯视</title>
+<link href="https://unpkg.com/maplibre-gl@5.12.0/dist/maplibre-gl.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.12.0/dist/maplibre-gl.css" rel="stylesheet" />
+<style>
+:root{--ink:#132a31;--muted:#667e84;--accent:#176c81;--border:#dbe8e8;--paper:#f7faf9;--cream:#fffdf7}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;color:var(--ink);background:#d6e2df}
+#map{position:fixed;inset:0}#veil{pointer-events:none;position:fixed;inset:0;background:linear-gradient(90deg,rgba(14,30,34,.17),transparent 35%)}
+#panel{position:fixed;left:20px;top:20px;bottom:20px;width:344px;max-width:calc(100vw - 40px);background:rgba(255,255,255,.96);box-shadow:0 20px 65px #142c3440;border:1px solid #e4ece8;border-radius:18px;overflow-y:auto;overscroll-behavior:contain;z-index:4}
+#panel .head{padding:20px 22px 18px;background:linear-gradient(135deg,#153e49,#235766);color:white}.eyebrow{font-size:10px;letter-spacing:2px;opacity:.75;font-weight:700}.head h1{font-size:22px;line-height:1.37;margin:8px 0 9px;letter-spacing:.3px}.head p{font-size:12px;line-height:1.7;color:#cee2e5;margin:0}.section{padding:16px 20px;border-bottom:1px solid var(--border)}.section h2{margin:0 0 12px;font-size:13px;color:#425d65;letter-spacing:.4px}.pills{display:flex;flex-wrap:wrap;gap:7px}.pills button{background:#f3f8f8;border:1px solid #dbe6e6;border-radius:8px;padding:8px 10px;color:#365760;font-weight:600;font-size:12px;cursor:pointer}.pills button:hover{background:#dceff1;color:#125b6a}.metric{display:flex;justify-content:space-between;align-items:center;margin:2px 0 9px;font-size:12px;font-weight:700}.metric output{color:#056d81;font-size:18px;font-weight:750;font-variant-numeric:tabular-nums}.range{width:100%;accent-color:#176c81;cursor:pointer}.rangelegend{display:flex;justify-content:space-between;font-size:10px;color:#779097;margin-top:4px}.toggles{display:grid;gap:11px}.toggles label{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:650;cursor:pointer}.toggles input{accent-color:#176c81;width:17px;height:17px;cursor:pointer}.hint{font-size:11px;line-height:1.7;color:#637e84;margin:10px 0 0}.note{background:#fff8e8;border-left:3px solid #d4aa55;padding:9px 11px;font-size:11px;line-height:1.65;color:#6e5837;border-radius:3px}.action{padding:10px 12px;border:0;color:white;background:#176c81;font-weight:650;border-radius:9px;cursor:pointer;font-size:12px}.action:hover{background:#0d5364}.action.secondary{background:#f0f7f7;border:1px solid #cadbdd;color:#255d67}.actionrow{display:flex;flex-wrap:wrap;gap:7px}.small{font-size:11px;color:#688187;line-height:1.6}.bottom{padding:15px 20px 21px}.bottom a{color:#286679;text-decoration:none}.bottom a:hover{text-decoration:underline}#status{color:#54747b;font-size:11px;min-height:20px;line-height:1.5;margin-top:8px}#altitude{position:fixed;right:20px;bottom:20px;z-index:2;background:rgba(255,255,255,.95);border:1px solid #e0e9e9;border-radius:12px;padding:10px 14px;box-shadow:0 10px 32px #1c34351c;font-size:12px;color:#3a5d65;min-width:186px}#altitude b{color:#183c49;font-size:14px}#tag{position:fixed;right:20px;top:20px;z-index:2;background:rgba(18,50,61,.88);padding:12px 15px;border-radius:11px;color:white;box-shadow:0 8px 27px #2448;line-height:1.7;font-size:12px;text-align:right}#tag strong{font-size:17px;letter-spacing:.5px}#tag span{color:#b8dce2;font-size:11px}.maplibregl-ctrl-top-right{top:102px;right:10px}.maplibregl-ctrl-bottom-right{right:10px;bottom:83px}.maplibregl-ctrl-bottom-left{left:380px}#mapOverlay{position:fixed;inset:0;background:#eaf1ef;z-index:1;display:grid;place-items:center;font-size:13px;color:#42727b;text-align:center;padding:32px}#mapOverlay.is-hidden{display:none}@media(max-width:760px){#panel{top:10px;left:10px;bottom:auto;max-height:63vh;width:305px}.head h1{font-size:18px}.section{padding:12px 16px}#tag{top:auto;bottom:90px;right:10px}#altitude{right:10px;bottom:10px}#mapOverlay{padding:24px}.maplibregl-ctrl-bottom-left{left:10px}}
+
+.mode-switch{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.mode-switch button{min-width:0;padding:10px 8px;border:1px solid #d5e2e3;border-radius:9px;background:#f3f8f8;color:#355b63;font-size:12px;font-weight:700;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+.mode-switch button:hover{background:#e1eff0}
+.mode-switch button.active{background:#176c81;border-color:#176c81;color:#fff;box-shadow:0 3px 10px #176c8130}
+.mode-switch button:focus-visible{outline:3px solid #8dc6d0;outline-offset:2px}
+body.globe-mode{background:radial-gradient(ellipse at 50% 45%,#24445e 0%,#0a1a2a 62%,#030a12 100%)}
+body.globe-mode #map{background:transparent}
+@media(max-width:760px){.mode-switch button{font-size:11px;padding:9px 5px}}
+
+@media(max-width:760px){.history-events{gap:5px}.history-event{grid-template-columns:60px 1fr;padding:7px}}
+
+
+
+</style>
+</head>
+<body>
+<div id="map"></div><div id="veil"></div><div id="mapOverlay"><div>正在连接开放地图与真实高程数据……<p style="margin-top:12px;color:#69838b;font-size:12px">首次加载需要联网；如果加载失败可切换备用底图。</p><button id="fallbackBasemap" style="padding:10px 16px;border-radius:7px;border:1px solid #9cbabe;background:white;color:#315d64;cursor:pointer">切换备用底图</button></div></div>
+<aside id="panel">
+  <div class="head"><div class="eyebrow">CHINA · TRUE 3D TERRAIN</div><h1>中国真实三维地形图</h1><p>数字高程模型驱动 · 海拔放大 1–100 倍 · 斜俯视 0–90°<br>起始位置：秦岭（来自你提供的地图链接）</p></div>
+  <section class="section"><h2>一键前往</h2><div class="pills">
+    <button data-preset="qinling">秦岭地区</button><button data-preset="china">中国全境</button><button data-preset="hengduan">横断山脉</button><button data-preset="tianshan">天山</button><button data-preset="tibet">青藏高原</button><button data-preset="sichuan">四川盆地</button>
+  </div></section>
+
+  <section class="section"><h2>地图模式</h2>
+    <div class="mode-switch" role="group" aria-label="选择地图显示模式">
+      <button type="button" data-map-mode="globe" aria-pressed="false">地球仪</button>
+      <button type="button" data-map-mode="terrain" class="active" aria-pressed="true">平面展开 · 三维地形</button>
+    </div>
+    <p class="hint">地球仪以球体呈现地球；平面展开采用常见地图投影。两种模式共用真实高程数据，均支持海拔放大和斜俯视角调整。</p>
+  </section>
+  <section class="section" id="historyPanel"><h2>历史地图 · 坤舆纪年</h2><p>前往独立的第三方历史地图项目。</p><p><a href="https://wanglu2016.github.io/kunyu-jinian/" target="_blank" rel="noopener noreferrer">打开《坤舆纪年》 ↗</a></p><p><a href="https://github.com/wanglu2016/kunyu-jinian" target="_blank" rel="noopener noreferrer">查看作者与源码</a></p></section>
+  <section class="section">
+    <div class="metric"><label for="exaggeration">海拔高度放大</label><output id="exagOut">10.0×</output></div>
+    <input id="exaggeration" class="range" type="range" min="1" max="100" step="0.5" value="10" /><div class="rangelegend"><span>1× 真实比例</span><span>10× 默认值</span><span>100×</span></div>
+    <div style="height:16px"></div><div class="metric"><label for="pitch">地图斜俯视角</label><output id="pitchOut">55°</output></div>
+    <input id="pitch" class="range" type="range" min="0" max="90" step="1" value="55" /><div class="rangelegend"><span>0° 垂直俯视</span><span>90° 接近水平</span></div>
+  </section>
+  <section class="section"><h2>地图信息图层</h2><div class="toggles">
+    <label>主要山脉中文标注<input type="checkbox" id="showMountains" checked /></label>
+    <label>主要湖泊中文标注<input type="checkbox" id="showLakes" checked /></label>
+    <label>主要河流中文标注<input type="checkbox" id="showRivers" checked /></label>
+    <label>县级边界（按需加载历史数据）<input type="checkbox" id="showCounties" /></label>
+    <label>地形阴影<input type="checkbox" id="showShade" checked /></label>
+  </div><p class="hint">河流、湖泊和道路的基础几何来自开放地图。山区名称为定位辅助标注，不代表山脉精确范围。县界叠加数据来源年份见下方。</p></section>
+  <section class="section"><h2>底图与网络诊断</h2><div class="actionrow"><button id="baseVector" class="action secondary">中文矢量底图</button><button id="baseRaster" class="action secondary">备用地形底图</button></div><p class="hint">高程数据与底图来自不同服务器。若公司网络、防火墙或浏览器屏蔽其中一个域名，相关信息可能无法显示。</p></section>
+  <section class="section"><h2>高清导出及补充数据</h2>
+    <div class="actionrow"><button id="saveImg" class="action">导出当前视野 · 2× PNG</button><button id="reset" class="action secondary">恢复 10× / 55°</button></div>
+    <p class="hint">放大地图到需要的区域再导出；输出像素由浏览器窗口尺寸及显卡限制决定。</p>
+    <div style="margin-top:11px"><label class="action secondary" style="display:inline-block;cursor:pointer" for="riverFile">导入分级水系 GeoJSON</label><input id="riverFile" type="file" accept=".geojson,.json,application/geo+json,application/json" style="display:none"></div>
+    <p class="hint">支持另行导入真实河线数据，属性 <code>level</code> 为 1、2、3 时按三种线宽显示；未经河网分级的数据不会被自动假定为三级水系。</p>
+    <div id="status" role="status">正在初始化地图……</div>
+  </section>
+  <div class="bottom"><div class="note"><b>数据边界：</b>10 倍高程是真实数字高程的可视化夸张，不是实际山高。县界仅尝试调用公开历史数据，不保证完整覆盖或符合 2026 年现行法定边界。当前底图的河线不等于全国完整的三级流域分级数据；用于地理浏览，不用于法定界线确认、测绘或导航。</div>
+  <p class="small">数据：AWS/Mapzen 高程瓦片、OpenFreeMap / OpenStreetMap 地图、geoBoundaries 边界（按各自许可）。<br>行政界线正式应用请以<a href="https://bzdt.tianditu.gov.cn/" target="_blank" rel="noopener">自然资源部标准地图</a>为准。需要联网加载数据。</p>
+  </div>
+</aside>
+<div id="tag"><strong>秦岭 · 三维地形</strong><div>高程夸张 <b id="tagExag">10×</b> · 斜俯视 <b id="tagPitch">55°</b></div><span>鼠标拖动 / 滚轮缩放 / 右键旋转</span></div>
+<div id="altitude">指针所指真实海拔：<b id="altNum">—</b><div style="font-size:10px;color:#789096;margin-top:4px">海拔值为 DEM（数字高程模型）近似读数</div></div>
+<script>
+(function(){
+  const urls=['https://unpkg.com/maplibre-gl@5.12.0/dist/maplibre-gl.js',
+              'https://cdn.jsdelivr.net/npm/maplibre-gl@5.12.0/dist/maplibre-gl.js'];
+  function load(i){
+    if(window.maplibregl){window.startTerrainMap();return;}
+    if(i>=urls.length){
+      document.getElementById('mapOverlay').innerHTML='地图引擎下载失败。<div style="margin-top:12px;font-size:12px">当前网络无法访问 unpkg.com 和 cdn.jsdelivr.net。请更换网络或允许这些域名。</div>';
+      document.getElementById('status').textContent='地图引擎加载失败：两个备用域名均无法连接。';return;
+    }
+    const s=document.createElement('script');s.src=urls[i];s.async=true;
+    s.onload=()=>{if(window.maplibregl)window.startTerrainMap();else load(i+1)};
+    s.onerror=()=>load(i+1);document.head.appendChild(s);
+  }
+  window.addEventListener('DOMContentLoaded',()=>load(0));
+})();
+</script>
+<script>
+window.startTerrainMap=()=>{
+'use strict';
+if(window.__terrainInitialized)return;window.__terrainInitialized=true;
+const $=id=>document.getElementById(id);
+const params={exag:10,pitch:55};
+const status=(msg)=>$('status').textContent=msg;
+let activeMode='terrain';
+const cameraState={terrain:{center:[107.8437763,34.1401745],zoom:7.06,pitch:55,bearing:-18},globe:{center:[105,32],zoom:1.8,pitch:0,bearing:0}};
+if (!window.maplibregl){$('mapOverlay').textContent='未能加载地图引擎。';return;}
+const mountainLabels=[
+ ['秦岭',107.83,33.95],['太行山脉',113.72,38.23],['天山山脉',84.52,42.63],['阿尔泰山脉',88.82,48.01],['昆仑山脉',85.16,35.80],['祁连山脉',99.42,38.03],['喜马拉雅山脉',86.30,28.25],['横断山脉',99.93,29.06],['贺兰山',105.80,38.83],['阴山山脉',110.23,41.30],['大兴安岭',121.65,50.18],['小兴安岭',128.67,48.40],['长白山脉',127.97,42.47],['南岭',112.27,25.15],['武夷山脉',117.72,27.52],['吕梁山',111.48,37.50],['阿尔金山脉',90.18,38.20],['冈底斯山脉',83.00,31.05],['念青唐古拉山脉',91.3,30.25],['燕山山脉',117.3,40.65]
+];
+const lakeLabels=[
+ ['青海湖',100.15,36.89],['鄱阳湖',116.27,29.13],['洞庭湖',112.84,29.25],['太湖',120.18,31.20],['巢湖',117.55,31.55],['洪泽湖',118.64,33.24],['纳木错',90.60,30.74],['滇池',102.69,24.85],['洱海',100.19,25.81],['博斯腾湖',87.03,41.94],['赛里木湖',81.21,44.62],['呼伦湖',117.55,48.97],['兴凯湖',132.28,45.10],['羊卓雍错',90.66,28.92],['扎陵湖',97.21,34.88],['鄂陵湖',97.72,34.91]
+];
+const riverLabels=[
+ ['长江',112.35,30.57],['黄河',109.80,35.05],['珠江',113.14,23.25],['雅鲁藏布江',91.35,29.10],['澜沧江',99.65,27.0],['怒江',98.9,26.2],['黑龙江',128.4,49.8],['松花江',126.9,46.2],['塔里木河',84.1,40.66],['额尔齐斯河',86.68,47.20],['淮河',116.4,32.90],['汉江',111.67,32.45],['嘉陵江',106.3,31.7],['岷江',103.88,30.78],['湘江',112.8,27.60],['赣江',115.7,27.73],['西江',111.65,23.45],['渭河',108.45,34.35],['辽河',122.65,42.15],['海河',117.36,39.08],['澧水',110.55,29.5],['乌江',107.4,28.4],['金沙江',99.60,27.65],['沱江',105.07,29.63],['沅江',110.64,27.36],['钱塘江',119.6,29.78]
+];
+const fc=(arr)=>({type:'FeatureCollection',features:arr.map(([name,lon,lat])=>({type:'Feature',properties:{name},geometry:{type:'Point',coordinates:[lon,lat]}}))});
+const map=new maplibregl.Map({
+ container:'map',style:'https://tiles.openfreemap.org/styles/liberty',
+ center:[107.8437763,34.1401745],zoom:7.06,pitch:55,bearing:-18,
+ maxPitch:90,maxZoom:16,minZoom:2,antialias:true,preserveDrawingBuffer:true,
+ attributionControl:false
+});
+map.addControl(new maplibregl.NavigationControl({visualizePitch:true,showZoom:true,showCompass:true}),'top-right');
+map.addControl(new maplibregl.ScaleControl({maxWidth:145,unit:'metric'}),'bottom-left');
+map.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right');
+function sourceAndLabel(id,data,paint){
+ map.addSource(id,{type:'geojson',data:fc(data)});
+ map.addLayer({id:id+'-text',type:'symbol',source:id,layout:{'text-field':['get','name'],'text-font':['Noto Sans Regular','Arial Unicode MS Regular'],'text-size':paint.size,'text-letter-spacing':paint.spacing??0.06,'text-max-width':8,'text-allow-overlap':false,'text-optional':true,'text-padding':4},paint:{'text-color':paint.color,'text-halo-color':paint.halo,'text-halo-width':paint.haloWidth??1.4,'text-halo-blur':.4}});
+}
+let loaded=false,countyRequested=false,countyLoaded=false,styleMode='vector';
+let loadingTimer=0;
+const fallbackStyle={
+ version:8,
+ sources:{basemap:{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}'],tileSize:256,attribution:'Tiles © Esri — Source: Esri, DeLorme, NAVTEQ, TomTom, Intermap, increment P Corp., GEBCO, USGS, FAO, NPS, NRCAN, GeoBase, IGN, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), swisstopo, and the GIS User Community'}},
+ layers:[{id:'basemap-raster',type:'raster',source:'basemap'}]
+};
+function showLoadingMessage(s){$('mapOverlay').classList.remove('is-hidden');$('mapOverlay').querySelector('div').firstChild.textContent=s;}
+function switchBase(mode){
+ styleMode=mode;loaded=false;countyLoaded=false;countyRequested=false;
+ showLoadingMessage(mode==='raster'?'正在切换备用地形底图……':'正在连接中文矢量底图……');
+ clearTimeout(loadingTimer);
+ loadingTimer=setTimeout(()=>{if(!loaded)showLoadingMessage('底图加载超时，可能受到网络限制。');},16000);
+ try{map.setStyle(mode==='raster'?fallbackStyle:'https://tiles.openfreemap.org/styles/liberty');}
+ catch(err){status('切换底图失败：'+err.message);}
+}
+$('fallbackBasemap').onclick=()=>switchBase('raster');
+$('baseRaster').onclick=()=>switchBase('raster');
+$('baseVector').onclick=()=>switchBase('vector');
+loadingTimer=setTimeout(()=>{if(!loaded)showLoadingMessage('网络连接超时：请点击“切换备用底图”重试。');},16000);
+map.on('style.load',()=>{
+ try{
+ loaded=true;clearTimeout(loadingTimer);
+ map.setProjection({type:activeMode==='globe'?'globe':'mercator'});
+ if(activeMode==='globe'&&typeof map.setSky==='function'){try{map.setSky({'sky-color':'#b9d8ed','horizon-blend':0.18,'space-color':'#071727','star-intensity':0.18});}catch(e){}}
+ else if(typeof map.setSky==='function'){try{map.setSky(null);}catch(e){}}
+ if(!map.getSource('dem'))map.addSource('dem',{type:'raster-dem',tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],tileSize:256,minzoom:0,maxzoom:14,encoding:'terrarium',attribution:'<a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">AWS Terrain Tiles / Mapzen</a> · <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">DEM sources</a>'});
+ map.setTerrain({source:'dem',exaggeration:params.exag});
+ const symbolLayer=map.getStyle().layers.find(l=>l.type==='symbol');
+ map.addLayer({id:'earth-hillshade',type:'hillshade',source:'dem',paint:{'hillshade-shadow-color':'#293d32','hillshade-highlight-color':'#fffdf2','hillshade-accent-color':'#556e69','hillshade-exaggeration':0.46}},symbolLayer?.id);
+ sourceAndLabel('mountains',mountainLabels,{size:['interpolate',['linear'],['zoom'],3,9,6,12,10,15],color:'#4d3b2e',halo:'#fff8e9',haloWidth:1.65,spacing:0.1});
+ sourceAndLabel('lakes',lakeLabels,{size:['interpolate',['linear'],['zoom'],3,9,8,12],color:'#075d9d',halo:'#e4f5ff',haloWidth:1.5});
+ sourceAndLabel('rivers',riverLabels,{size:['interpolate',['linear'],['zoom'],3,9,8,11],color:'#0761a5',halo:'#f1fbff',haloWidth:1.4});
+ 
+ for(const [checkbox,layer] of [['showMountains','mountains-text'],['showLakes','lakes-text'],['showRivers','rivers-text'],['showShade','earth-hillshade']]){
+   if(!$(checkbox).checked)map.setLayoutProperty(layer,'visibility','none');
+ }
+ $('mapOverlay').classList.add('is-hidden');
+ status('地图已初始化，真实高程加载中。若山区始终平坦，请检查 AWS 高程瓦片是否被网络屏蔽。');
+ if($('showCounties').checked)loadCounties();
+ }catch(err){status('地图图层初始化失败：'+err.message);showLoadingMessage('图层加载异常：'+err.message);console.error(err);}
+});
+let lastErrorTime=0;
+map.on('error',(e)=>{
+ const msg=String(e?.error?.message||'未知网络异常');
+ if(Date.now()-lastErrorTime>4500){status('地图资源出现加载错误：'+msg.slice(0,130));lastErrorTime=Date.now();}
+ if(!loaded){showLoadingMessage('主底图加载失败，请点击“切换备用底图”。');}
+});
+async function loadCounties(){
+ if(!loaded||countyRequested)return;
+ countyRequested=true;
+ status('正在尝试加载公开历史县级边界，首次下载可能较慢……');
+ const boundaryURL='https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/CHN/ADM2/geoBoundaries-CHN-ADM2_simplified.geojson';
+ try{
+   const r=await fetch(boundaryURL);if(!r.ok)throw Error('HTTP '+r.status);
+   const geo=await r.json();
+   if(geo.type!=='FeatureCollection')throw Error('非预期县界格式');
+   if(map.getSource('counties'))map.getSource('counties').setData(geo);
+   else{
+      map.addSource('counties',{type:'geojson',data:geo,attribution:'geoBoundaries · NASG China / Revolutionary GIS (2017), PDDL 1.0'});
+      map.addLayer({id:'county-border',type:'line',source:'counties',minzoom:5.2,paint:{'line-color':'#b34750','line-opacity':['interpolate',['linear'],['zoom'],5.2,.2,7,.50,10,.72],'line-width':['interpolate',['linear'],['zoom'],5,0.3,9,0.95]}});
+      map.addLayer({id:'county-name',type:'symbol',source:'counties',minzoom:8.5,layout:{'text-field':['coalesce',['get','shapeName'],['get','name']],'text-font':['Noto Sans Regular','Arial Unicode MS Regular'],'text-size':['interpolate',['linear'],['zoom'],8.5,10,12,13],'text-allow-overlap':false,'text-padding':10},paint:{'text-color':'#8f393d','text-halo-color':'#ffffff','text-halo-width':1.3}});
+   }
+   countyLoaded=true;countyVisibility();
+   status(`县界已加载：${geo.features.length} 个历史区划多边形（不作为现行法定依据）。`);
+ }catch(err){
+   countyRequested=false;
+   status('县界远程文件加载失败（地图地形仍可正常使用）：'+String(err.message).slice(0,80));
+ }
+}
+function countyVisibility(){if(!loaded||!countyLoaded)return;const v=$('showCounties').checked?'visible':'none';for(const id of ['county-border','county-name'])map.setLayoutProperty(id,'visibility',v);}
+for(const [control,layer] of [['showMountains','mountains-text'],['showLakes','lakes-text'],['showRivers','rivers-text'],['showShade','earth-hillshade']]){
+ $(control).addEventListener('change',e=>{if(loaded&&map.getLayer(layer))map.setLayoutProperty(layer,'visibility',e.target.checked?'visible':'none');});
+}
+$('showCounties').addEventListener('change',()=>{if(!countyLoaded){if($('showCounties').checked)loadCounties();}else countyVisibility();});
+
+
+function setExag(n){params.exag=Number(n);$('exaggeration').value=params.exag;$('exagOut').textContent=params.exag.toFixed(1)+'×';$('tagExag').textContent=params.exag.toFixed(1)+'×';if(loaded)map.setTerrain({source:'dem',exaggeration:params.exag});}
+function setPitch(n){params.pitch=Number(n);$('pitch').value=params.pitch;$('pitchOut').textContent=params.pitch+'°';$('tagPitch').textContent=params.pitch+'°';map.setPitch(params.pitch);}
+$('exaggeration').addEventListener('input',e=>setExag(e.target.value));
+$('pitch').addEventListener('input',e=>setPitch(e.target.value));
+map.on('pitch',()=>{const n=Math.round(map.getPitch());params.pitch=n;$('pitch').value=n;$('pitchOut').textContent=n+'°';const tagPitch=$('tagPitch');if(tagPitch)tagPitch.textContent=n+'°';});
+
+// Two display modes share the same live DEM terrain, labels and controls.
+function updateModeButtons(mode){
+ document.querySelectorAll('[data-map-mode]').forEach(b=>{const on=b.dataset.mapMode===mode;b.classList.toggle('active',on);b.setAttribute('aria-pressed',on?'true':'false');});
+}
+function updateModeTag(mode){
+ if(mode==='globe')$('tag').innerHTML='<strong>地球仪 · 全球三维地形</strong><div>高程夸张 <b id="tagExag">'+params.exag.toFixed(1)+'×</b> · 视角 <b id="tagPitch">'+params.pitch+'°</b></div><span>拖动旋转地球 / 滚轮缩放</span>';
+ else $('tag').innerHTML='<strong>平面展开 · 三维地形</strong><div>高程夸张 <b id="tagExag">'+params.exag.toFixed(1)+'×</b> · 斜俯视 <b id="tagPitch">'+params.pitch+'°</b></div><span>拖动平移 / 滚轮缩放 / 右键旋转</span>';
+}
+function saveMapCamera(){
+ const c=map.getCenter();cameraState[activeMode]={center:[c.lng,c.lat],zoom:map.getZoom(),pitch:map.getPitch(),bearing:map.getBearing()};
+}
+function switchMapMode(mode){
+ if(!['globe','terrain'].includes(mode)||mode===activeMode)return;
+ saveMapCamera();activeMode=mode;updateModeButtons(mode);updateModeTag(mode);
+ document.body.classList.toggle('globe-mode',mode==='globe');
+ const apply=()=>{
+   if(!map.isStyleLoaded())return;
+   map.setProjection({type:mode==='globe'?'globe':'mercator'});
+   if(mode==='globe'){
+     if(typeof map.setSky==='function'){try{map.setSky({'sky-color':'#b9d8ed','horizon-blend':0.18,'space-color':'#071727','star-intensity':0.18});}catch(e){}}
+     map.flyTo({...cameraState.globe,duration:1200,essential:true});
+     status('地球仪模式：球形地球与真实高程地形。可拖动旋转地球；海拔放大和斜俯视控制继续有效。');
+   }else{
+     if(typeof map.setSky==='function'){try{map.setSky(null);}catch(e){}}
+     map.flyTo({...cameraState.terrain,duration:1200,essential:true});
+     status('平面展开模式：保留真实高程地形、海拔放大和斜俯视角。');
+   }
+   map.resize();
+ };
+ if(map.isStyleLoaded())apply();else map.once('style.load',apply);
+}
+document.querySelectorAll('[data-map-mode]').forEach(b=>b.addEventListener('click',()=>switchMapMode(b.dataset.mapMode)));
+
+const presets={
+ qinling:{center:[107.8437763,34.1401745],zoom:7.06,pitch:55,bearing:-18},
+ china:{center:[104.1,35.3],zoom:3.48,pitch:38,bearing:-12},
+ hengduan:{center:[99.63,28.5],zoom:6.65,pitch:58,bearing:-25},
+ tianshan:{center:[84.80,42.7],zoom:6.6,pitch:58,bearing:-21},
+ tibet:{center:[87.12,32.30],zoom:5.1,pitch:52,bearing:-25},
+ sichuan:{center:[104.60,30.05],zoom:6.5,pitch:55,bearing:-25}
+};
+for(const btn of document.querySelectorAll('[data-preset]'))btn.addEventListener('click',()=>map.flyTo({...presets[btn.dataset.preset],speed:1.2,essential:true}));
+$('reset').addEventListener('click',()=>{setExag(10);setPitch(55);status('已重置为 10 倍高程和 55° 斜俯视；高程最高可调到 100 倍，斜度可调到 90°。');});
+let mouseTick=0;
+map.on('mousemove',e=>{if(!loaded||++mouseTick%4!==0)return;const h=map.queryTerrainElevation(e.lngLat);$('altNum').textContent=h===null||!Number.isFinite(h)?'加载中':Math.round(h/params.exag).toLocaleString('zh-CN')+' 米';});
+map.on('mouseout',()=>$('altNum').textContent='—');
+$('saveImg').addEventListener('click',async()=>{
+ if(!loaded){status('底图未加载，暂不能导出。');return;}
+ const btn=$('saveImg');btn.disabled=true;btn.textContent='高清图渲染中…';status('渲染双倍像素图像中，若显卡有限会自动采用较低分辨率。');
+ try{
+   if(typeof map.setPixelRatio==='function'){map.setPixelRatio(2);map.resize();}map.triggerRepaint();
+   await new Promise(resolve=>{let finished=false;function done(){if(finished)return;finished=true;resolve();}map.once('idle',done);setTimeout(done,5500);});
+   await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+   const canvas=map.getCanvas();const url=canvas.toDataURL('image/png');
+   const anchor=document.createElement('a');anchor.href=url;anchor.download=`中国三维地形_${params.exag}倍_${canvas.width}x${canvas.height}.png`;document.body.appendChild(anchor);anchor.click();anchor.remove();
+   status(`已提交 ${canvas.width} × ${canvas.height} 像素 PNG 下载；图像仅包含地图，不含左侧操作面板。`);
+ }catch(err){status('导出失败：'+err.message+'。可使用系统截图或适当缩小浏览器窗口后重试。');}
+ finally{if(typeof map.setPixelRatio==='function')map.setPixelRatio(null);map.resize();btn.disabled=false;btn.textContent='导出当前视野 · 2× PNG';}
+});
+$('riverFile').addEventListener('change',async e=>{
+ const file=e.target.files?.[0];if(!file)return;
+ try{
+   const data=JSON.parse(await file.text());if(!['FeatureCollection','Feature'].includes(data.type))throw Error('请提供 GeoJSON');
+   if(map.getLayer('custom-water-1'))for(const l of ['custom-water-1','custom-water-2','custom-water-3'])map.removeLayer(l);
+   if(map.getSource('custom-water'))map.getSource('custom-water').setData(data);else map.addSource('custom-water',{type:'geojson',data});
+   for(const lvl of [3,2,1]){
+     map.addLayer({id:'custom-water-'+lvl,type:'line',source:'custom-water',filter:['==',['to-number',['get','level']],lvl],paint:{'line-color':lvl===1?'#0862b9':lvl===2?'#157cc3':'#61b2dd','line-width':lvl===1?3.3:lvl===2?1.9:1,'line-opacity':.95}});
+   }
+   status('分级水系已叠加（按输入 GeoJSON 的 level=1/2/3 属性区分）；未赋值的线不会显示。');
+ }catch(err){status('无法导入水系：'+err.message);}finally{e.target.value='';}
+});
+};
+</script>
+</body>
+</html>

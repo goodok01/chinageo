@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#133936">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="中国地形">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>中国地形 · 三维地图</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.12.0/dist/maplibre-gl.css">
+<link rel="stylesheet" href="./app.css">
+<script defer src="./map.js"></script>
+<script defer src="./app.js"></script>
+</head>
+<body>
+<svg class="sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <symbol id="i-place" viewBox="0 0 24 24"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+  <symbol id="i-terrain" viewBox="0 0 24 24"><path d="m2 19 7-12 4 6 3-4 6 10H2Z"/><path d="m7 11 2 2 2-2"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5ZM3 12l9 5 9-5M3 16l9 5 9-5"/></symbol>
+  <symbol id="i-install" viewBox="0 0 24 24"><path d="M12 3v12m-4-4 4 4 4-4M4 16v4h16v-4"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7M6 9v11h12V9m-8 11v-6h4v6"/></symbol>
+</svg>
+<div id="map" aria-label="交互式三维地形地图"></div>
+<div id="mapOverlay" role="status">
+  <div class="loading-card">
+    <div class="loading-mark"><svg><use href="#i-terrain"></use></svg></div>
+    <p id="mapLoadingText">正在载入三维地图…</p>
+    <small>在线加载底图和真实高程</small>
+    <div class="actions">
+      <button id="fallbackBasemap" class="secondary" type="button" disabled>备用底图</button>
+      <button id="retryMap" class="secondary" type="button">重新加载</button>
+    </div>
+  </div>
+</div>
+
+<header class="app-header">
+  <div class="brand">
+    <div class="brand-mark"><svg><use href="#i-terrain"></use></svg></div>
+    <div class="brand-text"><h1>中国地形</h1><div><span id="tagMode">平面展开</span><span class="dot"></span><b id="tagExag">10.0×</b><span class="dot"></span><b id="tagPitch">55°</b></div></div>
+  </div>
+  <button id="installApp" class="install" type="button" data-panel="install" aria-controls="sheet" aria-expanded="false"><svg><use href="#i-install"></use></svg><span>安装</span></button>
+</header>
+
+<aside id="altitude" aria-label="点选位置的真实海拔" hidden>
+  <span>点选海拔</span><b id="altNum">—</b>
+</aside>
+<div class="map-shortcuts">
+  <button id="homeView" type="button" aria-label="返回秦岭视角" title="返回秦岭"><svg><use href="#i-home"></use></svg></button>
+</div>
+
+<section id="sheet" aria-labelledby="sheetTitle" hidden>
+  <div class="sheet-head">
+    <h2 id="sheetTitle">地区</h2>
+    <button id="closeSheet" type="button" aria-label="收起面板"><svg><use href="#i-close"></use></svg></button>
+  </div>
+  <div class="sheet-body" id="sheetBody">
+    <section id="panel-place" data-sheet-page hidden>
+      <p class="muted">跳转后可继续拖动或缩放地图。</p>
+      <div class="tile-grid">
+        <button type="button" data-preset="qinling"><b>秦岭</b><small>南北地理分界</small></button>
+        <button type="button" data-preset="china"><b>全国</b><small>查看中国全境</small></button>
+        <button type="button" data-preset="hengduan"><b>横断山脉</b><small>深切峡谷与纵向山系</small></button>
+        <button type="button" data-preset="tianshan"><b>天山</b><small>山脉与盆地</small></button>
+        <button type="button" data-preset="tibet"><b>青藏高原</b><small>高原与喜马拉雅山</small></button>
+        <button type="button" data-preset="sichuan"><b>四川盆地</b><small>盆周山地与平原</small></button>
+      </div>
+    </section>
+    <section id="panel-terrain" data-sheet-page hidden>
+      <div class="segmented" role="group" aria-label="地图模式">
+        <button type="button" data-map-mode="terrain" class="active" aria-pressed="true">平面展开</button>
+        <button type="button" data-map-mode="globe" aria-pressed="false">地球仪</button>
+      </div>
+      <div class="field"><label for="exaggeration">高程放大</label><output id="exagOut" for="exaggeration">10.0×</output></div>
+      <input id="exaggeration" type="range" min="1" max="100" step=".5" value="10">
+      <div class="ends"><span>1× 真实比例</span><span>100×</span></div>
+      <div class="chips" aria-label="常用高程倍数">
+        <button type="button" data-exag="1">1×</button><button type="button" data-exag="10">10×</button><button type="button" data-exag="25">25×</button><button type="button" data-exag="50">50×</button><button type="button" data-exag="100">100×</button>
+      </div>
+      <div class="field"><label for="pitch">斜俯视角</label><output id="pitchOut" for="pitch">55°</output></div>
+      <input id="pitch" type="range" min="0" max="90" step="1" value="55">
+      <div class="ends"><span>0° 垂直俯视</span><span>90° 近水平</span></div>
+      <button id="reset" class="secondary" type="button">恢复 10× / 55°</button>
+      <p class="muted">单指平移，双指捏合缩放、扭转旋转，双指同向上下滑动调视角。轻点地图查看真实海拔。</p>
+    </section>
+    <section id="panel-history" data-sheet-page hidden><h2>历史地图 · 坤舆纪年</h2><p>前往独立的第三方历史地图项目。</p><p><a href="https://wanglu2016.github.io/kunyu-jinian/" target="_blank" rel="noopener noreferrer">打开《坤舆纪年》 ↗</a></p><p><a href="https://github.com/wanglu2016/kunyu-jinian" target="_blank" rel="noopener noreferrer">查看作者与源码</a></p></section>
+    <section id="panel-layers" data-sheet-page hidden>
+      <div class="switches">
+        <label>主要山脉中文标注<input id="showMountains" type="checkbox" checked></label>
+        <label>主要湖泊中文标注<input id="showLakes" type="checkbox" checked></label>
+        <label>主要河流中文标注<input id="showRivers" type="checkbox" checked></label>
+        <label>县级边界<input id="showCounties" type="checkbox"></label>
+        <label>地形阴影<input id="showShade" type="checkbox" checked></label>
+      </div>
+      <details><summary>切换底图、导出与导入</summary>
+        <div class="actions">
+          <button id="baseVector" class="secondary" type="button">矢量底图</button>
+          <button id="baseRaster" class="secondary" type="button">备用地形底图</button>
+          <button id="saveImg" class="secondary" type="button">导出地图 · 2× PNG</button>
+          <label class="secondary file-button" for="riverFile">导入分级水系</label>
+          <input id="riverFile" type="file" accept=".geojson,.json,application/geo+json,application/json">
+        </div>
+      </details>
+      <details><summary>数据来源与使用范围</summary>
+        <p class="muted">地形来自 AWS/Mapzen 高程瓦片，底图来自 OpenFreeMap、OpenStreetMap 或 Esri。县界为 geoBoundaries 公开历史数据，行政界线正式应用请参阅<a href="https://bzdt.tianditu.gov.cn/" target="_blank" rel="noopener">自然资源部标准地图</a>。海拔为数字高程模型近似读数。三级水系可导入带 level 属性的河线数据。</p>
+      </details>
+      <p id="status" class="muted" role="status"></p>
+    </section>
+    <section id="panel-install" data-sheet-page hidden>
+      <p class="muted">安装后，点手机主屏幕上的「中国地形」图标即可独立打开。底图与高程需要联网加载。</p>
+      <button id="nativeInstall" class="primary" type="button" hidden>安装到主屏幕</button>
+      <div id="iosInstall"><h3>iPhone</h3><p>用 Safari 打开本页，点「分享」→「添加到主屏幕」→「添加」。如看到「作为网页 App 打开」，保持开启。</p></div>
+      <div id="androidInstall"><h3>安卓</h3><p>用 Chrome 打开本页，点右上角菜单 →「安装应用」或「添加到主屏幕」。</p></div>
+    </section>
+  </div>
+</section>
+
+
+
+<nav class="dock" aria-label="地图操作">
+  <button type="button" data-panel="place" aria-controls="sheet" aria-expanded="false"><svg><use href="#i-place"></use></svg><span>地区</span></button>
+  <button type="button" data-panel="terrain" aria-controls="sheet" aria-expanded="false"><svg><use href="#i-terrain"></use></svg><span>地形</span></button>
+  <button type="button" data-panel="history" aria-controls="sheet" aria-expanded="false"><svg><use href="#i-clock"></use></svg><span>历史</span></button>
+  <button type="button" data-panel="layers" aria-controls="sheet" aria-expanded="false"><svg><use href="#i-layers"></use></svg><span>图层</span></button>
+</nav>
+</body>
+</html>
