@@ -27,11 +27,25 @@ body.globe-mode #map{background:transparent}
 
 
 </style>
+<link rel="stylesheet" href="./search.css">
+<script src="./search.js"></script>
 </head>
 <body>
 <div id="map"></div><div id="veil"></div><div id="mapOverlay"><div>正在连接开放地图与真实高程数据……<p style="margin-top:12px;color:#69838b;font-size:12px">首次加载需要联网；如果加载失败可切换备用底图。</p><button id="fallbackBasemap" style="padding:10px 16px;border-radius:7px;border:1px solid #9cbabe;background:white;color:#315d64;cursor:pointer">切换备用底图</button></div></div>
 <aside id="panel">
   <div class="head"><div class="eyebrow">CHINA · TRUE 3D TERRAIN</div><h1>中国真实三维地形图</h1><p>数字高程模型驱动 · 海拔放大 1–100 倍 · 斜俯视 0–90°<br>起始位置：秦岭（来自你提供的地图链接）</p></div>
+  <section class="section" aria-labelledby="addressTitle">
+    <h2 id="addressTitle">地址搜索</h2>
+    <form id="addressSearch" role="search" aria-label="搜索地图地址">
+      <label for="addressQuery" class="search-label">地名、地址或经纬度</label>
+      <div class="search-row"><input id="addressQuery" type="search" placeholder="如：北京市 故宫" autocomplete="off" maxlength="200"><button class="action" type="submit" disabled>搜索</button></div>
+      <button id="clearAddress" type="button" class="search-clear">清除结果与标记</button>
+    </form>
+    <p id="addressStatus" class="small" role="status" aria-live="polite">地图初始化后即可搜索。</p>
+    <ul id="addressResults" aria-label="地址搜索结果"></ul>
+    <p class="small">地址检索：<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a> / Nominatim</p>
+  </section>
+
   <section class="section"><h2>一键前往</h2><div class="pills">
     <button data-preset="qinling">秦岭地区</button><button data-preset="china">中国全境</button><button data-preset="hengduan">横断山脉</button><button data-preset="tianshan">天山</button><button data-preset="tibet">青藏高原</button><button data-preset="sichuan">四川盆地</button>
   </div></section>
@@ -114,6 +128,7 @@ const map=new maplibregl.Map({
  maxPitch:90,maxZoom:16,minZoom:2,antialias:true,preserveDrawingBuffer:true,
  attributionControl:false
 });
+window.initAddressSearch(map);
 map.addControl(new maplibregl.NavigationControl({visualizePitch:true,showZoom:true,showCompass:true}),'top-right');
 map.addControl(new maplibregl.ScaleControl({maxWidth:145,unit:'metric'}),'bottom-left');
 map.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right');

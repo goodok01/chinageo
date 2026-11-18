@@ -29,3 +29,7 @@ https://openfreemap.org/ 提供在线矢量底图、样式和字形；OpenStreet
 ## Esri World Topographic Map
 
 备用底图为 Esri 在线服务，客户端保留服务来源署名。服务及供应者条款见 https://www.esri.com/en-us/legal/terms/full-master-agreement ，属于第三方服务，不能视为 MIT 开源瓦片。自建或商业部署时须确认对应服务访问条件。
+
+## 地址搜索：Nominatim
+
+Web 客户端在用户明确提交后向 https://nominatim.openstreetmap.org/search 发送地址查询，显示结果后由用户选择定位。不提供自动补全，客户端限制连续请求频率。地址数据 © OpenStreetMap contributors，ODbL 1.0；地图搜索界面保留署名链接。公共服务使用政策：https://operations.osmfoundation.org/policies/nominatim/ 。输入的地址会发送至此第三方服务。
